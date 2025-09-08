@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Brain, ArrowRight, Play } from "lucide-react";
+import { useState } from "react";
+import { DemoModal } from "@/components/modals/DemoModal";
 
 export const LandingHero = () => {
+  const [showDemo, setShowDemo] = useState(false);
+
   const scrollToRoles = () => {
     document.getElementById('user-roles')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -47,6 +51,7 @@ export const LandingHero = () => {
             <Button 
               variant="outline" 
               size="lg"
+              onClick={() => setShowDemo(true)}
               className="border-primary text-primary hover:bg-primary hover:text-white px-8 py-4 text-lg"
             >
               <Play className="mr-2 h-5 w-5" />
@@ -88,6 +93,8 @@ export const LandingHero = () => {
           </div>
         </div>
       </div>
+
+      <DemoModal open={showDemo} onOpenChange={setShowDemo} />
     </section>
   );
 };

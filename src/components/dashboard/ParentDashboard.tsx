@@ -15,9 +15,12 @@ import {
   Play,
   CheckCircle
 } from "lucide-react";
+import { MessageModal } from "@/components/modals/MessageModal";
+import { useState } from "react";
 import { toast } from "sonner";
 
 export const ParentDashboard = () => {
+  const [showMessageModal, setShowMessageModal] = useState(false);
   const childStats = {
     name: "Emma",
     age: 8,
@@ -316,7 +319,7 @@ export const ParentDashboard = () => {
                 <p className="text-muted-foreground mb-4">
                   Stay connected with your child's therapy team for updates and guidance.
                 </p>
-                <Button onClick={() => toast("Message center opened")}>
+                <Button onClick={() => setShowMessageModal(true)}>
                   Send Message to Therapist
                 </Button>
               </div>
@@ -324,6 +327,12 @@ export const ParentDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <MessageModal 
+        open={showMessageModal} 
+        onOpenChange={setShowMessageModal}
+        recipientType="therapist"
+      />
     </div>
   );
 };

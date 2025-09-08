@@ -15,10 +15,14 @@ import {
   Zap,
   Smile
 } from "lucide-react";
+import { GameModal } from "@/components/modals/GameModal";
 import { toast } from "sonner";
 
 export const ChildDashboard = () => {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [showGameModal, setShowGameModal] = useState(false);
+  const [currentGameId, setCurrentGameId] = useState("");
+  const [currentGameTitle, setCurrentGameTitle] = useState("");
 
   const playerStats = {
     name: "Emma",
@@ -89,8 +93,12 @@ export const ChildDashboard = () => {
   ];
 
   const handleStartGame = (gameId: string) => {
-    setSelectedGame(gameId);
-    toast(`Starting ${availableGames.find(g => g.id === gameId)?.title}! Have fun! 🎮`);
+    const game = availableGames.find(g => g.id === gameId);
+    if (game) {
+      setCurrentGameId(gameId);
+      setCurrentGameTitle(game.title);
+      setShowGameModal(true);
+    }
   };
 
   return (
@@ -322,6 +330,13 @@ export const ChildDashboard = () => {
           </Button>
         </CardContent>
       </Card>
+
+      <GameModal 
+        open={showGameModal}
+        onOpenChange={setShowGameModal}
+        gameId={currentGameId}
+        gameTitle={currentGameTitle}
+      />
     </div>
   );
 };

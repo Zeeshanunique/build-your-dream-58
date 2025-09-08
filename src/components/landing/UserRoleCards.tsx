@@ -1,12 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserCheck, Home, Gamepad2, LogIn } from "lucide-react";
+import { useState } from "react";
+import { TourModal } from "@/components/modals/TourModal";
 
 interface UserRoleCardsProps {
   onRoleSelect: (role: string) => void;
 }
 
 export const UserRoleCards = ({ onRoleSelect }: UserRoleCardsProps) => {
+  const [showTour, setShowTour] = useState(false);
   const roles = [
     {
       id: "therapist",
@@ -116,11 +119,13 @@ export const UserRoleCards = ({ onRoleSelect }: UserRoleCardsProps) => {
           <p className="text-muted-foreground mb-4">
             New to CogniCare? Learn more about our platform
           </p>
-          <Button variant="outline" size="lg">
+          <Button variant="outline" size="lg" onClick={() => setShowTour(true)}>
             Take Platform Tour
           </Button>
         </div>
       </div>
+
+      <TourModal open={showTour} onOpenChange={setShowTour} />
     </section>
   );
 };
