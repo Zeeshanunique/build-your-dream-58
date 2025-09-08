@@ -23,7 +23,35 @@ CogniCare is an advanced cognitive retraining platform that combines EEG neurofe
 - **Progress Analytics**: Detailed insights and reporting capabilities
 - **Responsive Design**: Optimized for desktop, tablet, and mobile devices
 
-## 🏗️ Architecture
+## 📊 Database & KPI System
+
+CogniCare includes a comprehensive database system that tracks and manages all patient KPIs and session data:
+
+### Database Features
+- **Patient Management**: Complete patient profiles with demographics and conditions
+- **Session Tracking**: Detailed therapy session records with progress scores
+- **KPI Metrics**: Real-time tracking of cognitive performance indicators
+- **EEG Integration**: Brainwave data storage and analysis
+- **Progress Analytics**: Historical trends and improvement tracking
+
+### Key Performance Indicators
+- **Attention Span**: Minutes of sustained focus during tasks
+- **Task Accuracy**: Percentage of correctly completed exercises
+- **Reaction Time**: Response speed in milliseconds
+- **Memory Recall**: Percentage of information retained
+- **Social Interaction Scores**: Communication and social skill ratings
+- **EEG Metrics**: Alpha, beta, theta, and delta wave measurements
+
+### Database Structure
+```
+Users (therapists, parents, children)
+├── Patients (demographics, conditions)
+│   ├── Therapy Sessions (progress, notes)
+│   ├── KPI Metrics (performance data)
+│   └── EEG Readings (brainwave data)
+```
+
+The system uses a mock database service for development that simulates real SQLite functionality, providing sample data for all dashboard components and analytics.
 
 ### User Roles
 - **Therapists**: Access patient lists, monitor progress, configure treatment plans

@@ -17,22 +17,43 @@ import {
   BarChart3,
   Settings
 } from "lucide-react";
+import { useEEGData, useAllPatients } from "@/hooks/use-database";
 import { toast } from "sonner";
 
 export const EEGMonitor = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connected");
   const [sessionTime, setSessionTime] = useState(0);
-  const [activePatient, setActivePatient] = useState("Emma Rodriguez");
+  const [selectedPatientId, setSelectedPatientId] = useState(1); // Default to first patient
+  
+  // Fetch real data from database
+  const { patients } = useAllPatients();
+  const { eegData: dbEegData, loading } = useEEGData(selectedPatientId, 3); // Get EEG data for session 3
 
-  // Simulate real-time EEG data
+  const activePatient = patients?.find(p => p.id === selectedPatientId)?.name || "No patient selected";
+
+  // Use real EEG data if available, otherwise use simulated data
   const [eegData, setEegData] = useState({
-    alpha: 45,
-    beta: 32,
-    theta: 28,
-    delta: 15,
-    gamma: 8
+    alpha: dbEegData?.[0]?.alpha_waves || 45,
+    beta: dbEegData?.[0]?.beta_waves || 32,
+    theta: dbEegData?.[0]?.theta_waves || 28,
+    delta: dbEegData?.[0]?.delta_waves || 15,
+    gamma: 8 // Not in DB, use default
   });
+
+  // Update EEG data when database data changes
+  useEffect(() => {
+    if (dbEegData && dbEegData.length > 0) {
+      const latestReading = dbEegData[dbEegData.length - 1];
+      setEegData({
+        alpha: latestReading.alpha_waves,
+        beta: latestReading.beta_waves,
+        theta: latestReading.theta_waves,
+        delta: latestReading.delta_waves,
+        gamma: 8 // Not in DB schema
+      });
+    }
+  }, [dbEegData]);
 
   // Simulate session timer
   useEffect(() => {

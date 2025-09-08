@@ -22,6 +22,7 @@ import {
 import { PatientList } from "./PatientList";
 import { EEGMonitor } from "./EEGMonitor";
 import { AddPatientModal } from "@/components/modals/AddPatientModal";
+import { useTherapistKPIs, useOverallKPIs, useAllPatients } from "@/hooks/use-database";
 import { toast } from "sonner";
 
 export const TherapistDashboard = () => {
@@ -29,11 +30,41 @@ export const TherapistDashboard = () => {
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
+  // Fetch real data from database
+  const { kpis: therapistKPIs, loading: therapistLoading } = useTherapistKPIs(1); // Assuming therapist ID 1
+  const { summary: overallKPIs, loading: overallLoading } = useOverallKPIs();
+  const { patients, loading: patientsLoading } = useAllPatients();
+
+  // Calculate dynamic stats from real data
   const stats = [
-    { title: "Active Patients", value: "24", change: "+3", icon: Users, color: "primary" },
-    { title: "Sessions This Week", value: "89", change: "+12%", icon: Calendar, color: "therapeutic-green" },
-    { title: "Avg. Improvement", value: "23%", change: "+5%", icon: TrendingUp, color: "success" },
-    { title: "EEG Sessions", value: "156", change: "+8", icon: Activity, color: "child-purple" }
+    { 
+      title: "Active Patients", 
+      value: patientsLoading ? "..." : patients?.length.toString() || "0", 
+      change: "+3", 
+      icon: Users, 
+      color: "primary" 
+    },
+    { 
+      title: "Sessions This Week", 
+      value: therapistLoading ? "..." : therapistKPIs?.sessions_last_30_days?.toString() || "0", 
+      change: "+12%", 
+      icon: Calendar, 
+      color: "therapeutic-green" 
+    },
+    { 
+      title: "Avg. Improvement", 
+      value: therapistLoading ? "..." : therapistKPIs?.avg_progress_score ? `${Math.round(therapistKPIs.avg_progress_score * 10)}%` : "0%", 
+      change: "+5%", 
+      icon: TrendingUp, 
+      color: "success" 
+    },
+    { 
+      title: "Total Sessions", 
+      value: therapistLoading ? "..." : therapistKPIs?.total_sessions?.toString() || "0", 
+      change: "+8", 
+      icon: Activity, 
+      color: "child-purple" 
+    }
   ];
 
   const handleGenerateReport = (reportType: string) => {
@@ -151,22 +182,48 @@ export const TherapistDashboard = () => {
                 <CardDescription>Average improvement across all cognitive domains</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {[
-                  { domain: "Attention & Focus", progress: 78, improvement: "+15%" },
-                  { domain: "Working Memory", progress: 65, improvement: "+22%" },
-                  { domain: "Problem Solving", progress: 82, improvement: "+18%" },
-                  { domain: "Processing Speed", progress: 71, improvement: "+12%" }
-                ].map((item, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">{item.domain}</span>
-                      <Badge variant="secondary" className="text-success">
-                        {item.improvement}
-                      </Badge>
+                {overallLoading ? (
+                  // Loading state
+                  [...Array(4)].map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                      <div className="h-2 bg-gray-200 rounded animate-pulse"></div>
                     </div>
-                    <Progress value={item.progress} className="h-2" />
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  [
+                    { 
+                      domain: "Attention & Focus", 
+                      progress: overallKPIs?.avg_attention_span ? Math.min(overallKPIs.avg_attention_span * 4, 100) : 75, 
+                      improvement: "+15%" 
+                    },
+                    { 
+                      domain: "Working Memory", 
+                      progress: 65, 
+                      improvement: "+22%" 
+                    },
+                    { 
+                      domain: "Task Accuracy", 
+                      progress: overallKPIs?.avg_accuracy || 80, 
+                      improvement: "+18%" 
+                    },
+                    { 
+                      domain: "Task Completion", 
+                      progress: overallKPIs?.avg_completion_rate || 71, 
+                      improvement: "+12%" 
+                    }
+                  ].map((item, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">{item.domain}</span>
+                        <Badge variant="secondary" className="text-success">
+                          {item.improvement}
+                        </Badge>
+                      </div>
+                      <Progress value={item.progress} className="h-2" />
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
 
