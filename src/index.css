@@ -2,41 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Cognitive Retraining Application Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Main therapeutic palette */
+    --background: 210 25% 98%;
+    --foreground: 215 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Therapeutic blue - calming and professional */
+    --primary: 201 89% 48%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 201 89% 65%;
+    --primary-dark: 201 89% 35%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Soft therapeutic green */
+    --secondary: 142 52% 85%;
+    --secondary-foreground: 142 52% 25%;
+    --therapeutic-green: 142 69% 58%;
+    --therapeutic-green-light: 142 69% 85%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Child-friendly pastels */
+    --child-purple: 270 50% 75%;
+    --child-orange: 25 95% 70%;
+    --child-pink: 330 60% 80%;
+    --child-yellow: 45 100% 80%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Neutral therapeutic tones */
+    --muted: 210 25% 95%;
+    --muted-foreground: 215 15% 45%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 142 69% 88%;
+    --accent-foreground: 142 69% 25%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --border: 210 25% 90%;
+    --input: 210 25% 92%;
+    --ring: 201 89% 48%;
+
+    /* Gradients */
+    --gradient-therapeutic: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--therapeutic-green)));
+    --gradient-child: linear-gradient(135deg, hsl(var(--child-purple)), hsl(var(--child-orange)));
+    --gradient-calm: linear-gradient(180deg, hsl(var(--background)), hsl(var(--secondary)));
+
+    /* Shadows */
+    --shadow-therapeutic: 0 8px 32px -8px hsl(var(--primary) / 0.2);
+    --shadow-card: 0 4px 16px -4px hsl(var(--primary) / 0.1);
+
+    /* Success and warning colors */
+    --success: 142 69% 58%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 90% 60%;
+    --warning-foreground: 45 90% 15%;
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -100,6 +127,43 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* Smooth transitions for therapeutic feel */
+  * {
+    @apply transition-colors duration-200;
+  }
+
+  /* Child-friendly animations */
+  @keyframes gentle-float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(1deg); }
+  }
+
+  @keyframes progress-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .animate-gentle-float {
+    animation: gentle-float 3s ease-in-out infinite;
+  }
+
+  .animate-progress-pulse {
+    animation: progress-pulse 1.5s ease-in-out infinite;
+  }
+
+  /* Therapeutic color utilities */
+  .bg-therapeutic-gradient {
+    background: var(--gradient-therapeutic);
+  }
+
+  .bg-child-gradient {
+    background: var(--gradient-child);
+  }
+
+  .bg-calm-gradient {
+    background: var(--gradient-calm);
   }
 }
