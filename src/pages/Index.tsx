@@ -7,12 +7,16 @@ import { LandingHero } from "@/components/landing/LandingHero";
 import { UserRoleCards } from "@/components/landing/UserRoleCards";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { Dashboard } from "@/components/dashboard/Dashboard";
+import { DatabaseSeeder } from "@/components/DatabaseSeeder";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const { role } = useParams();
   const navigate = useNavigate();
+  const { userProfile, loading: authLoading } = useAuth();
   const [selectedRole, setSelectedRole] = useState<string | null>(role || null);
   const [isLoggedIn, setIsLoggedIn] = useState(!!role);
+  const [showSeeder, setShowSeeder] = useState(false);
 
   useEffect(() => {
     if (role && ['therapist', 'parent', 'child'].includes(role)) {
@@ -20,6 +24,14 @@ const Index = () => {
       setIsLoggedIn(true);
     }
   }, [role]);
+
+  useEffect(() => {
+    if (userProfile) {
+      setSelectedRole(userProfile.role);
+      setIsLoggedIn(true);
+      navigate(`/dashboard/${userProfile.role}`);
+    }
+  }, [userProfile, navigate]);
 
   const handleRoleSelect = (role: string) => {
     setSelectedRole(role);
@@ -33,20 +45,23 @@ const Index = () => {
     navigate('/');
   };
 
-  if (isLoggedIn && selectedRole) {
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Brain className="h-12 w-12 mx-auto text-primary animate-gentle-float mb-4" />
+          <p className="text-muted-foreground">Loading CogniCare...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoggedIn && selectedRole && userProfile) {
     return <Dashboard userRole={selectedRole} onLogout={handleLogout} />;
   }
 
   return (
     <div className="min-h-screen bg-calm-gradient">
-      {/* SEO Optimization */}
-      <head>
-        <title>CogniCare - Cognitive Retraining for Developmental Disabilities</title>
-        <meta name="description" content="Advanced cognitive retraining platform combining EEG neurofeedback with home-based training for children with developmental disabilities." />
-        <meta name="keywords" content="cognitive retraining, EEG neurofeedback, developmental disabilities, therapy, children" />
-        <link rel="canonical" href="/" />
-      </head>
-
       <main>
         <LandingHero />
         <UserRoleCards onRoleSelect={handleRoleSelect} />
@@ -102,6 +117,24 @@ const Index = () => {
             </div>
           </div>
         </section>
+        
+        {/* Development Database Seeder */}
+        {process.env.NODE_ENV === 'development' && (
+          <section className="py-16 bg-muted/30">
+            <div className="container mx-auto px-4">
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold mb-4 text-foreground">
+                  Developer Tools
+                </h3>
+                <p className="text-muted-foreground">
+                  Initialize Firebase with sample data for testing
+                </p>
+              </div>
+              
+              <DatabaseSeeder />
+            </div>
+          </section>
+        )}
       </main>
 
       <footer className="bg-foreground text-background py-8">
