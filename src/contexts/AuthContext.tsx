@@ -71,7 +71,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await signInWithEmailAndPassword(auth, email, password);
       const userDoc = await getDoc(doc(db, 'users', result.user.uid));
       if (userDoc.exists()) {
-        setUserProfile(userDoc.data() as UserProfile);
+        const profileData = userDoc.data() as UserProfile;
+        setUserProfile(profileData);
+      } else {
+        // Create a default profile for existing auth users
+        const defaultProfile: UserProfile = {
+          uid: result.user.uid,
+          email: result.user.email!,
+          role: email.includes('therapist') ? 'therapist' : email.includes('parent') ? 'parent' : 'child',
+          name: result.user.displayName || 'Demo User',
+          createdAt: new Date().toISOString()
+        };
+        
+        await setDoc(doc(db, 'users', result.user.uid), defaultProfile);
+        setUserProfile(defaultProfile);
       }
     } catch (error) {
       throw error;

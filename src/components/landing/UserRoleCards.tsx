@@ -110,7 +110,7 @@ export const UserRoleCards = ({ onRoleSelect }: UserRoleCardsProps) => {
                       setLoading(role.id);
                       try {
                         await quickLogin(role.id as 'therapist' | 'parent' | 'child');
-                        onRoleSelect(role.id);
+                        // Don't call onRoleSelect here - let the auth context handle navigation
                         toast(`Welcome! Logged in as ${role.title}`, {
                           description: "Demo account created/accessed successfully"
                         });

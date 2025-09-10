@@ -7,7 +7,6 @@ import { LandingHero } from "@/components/landing/LandingHero";
 import { UserRoleCards } from "@/components/landing/UserRoleCards";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { Dashboard } from "@/components/dashboard/Dashboard";
-import { DatabaseSeeder } from "@/components/DatabaseSeeder";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
@@ -16,7 +15,6 @@ const Index = () => {
   const { userProfile, loading: authLoading } = useAuth();
   const [selectedRole, setSelectedRole] = useState<string | null>(role || null);
   const [isLoggedIn, setIsLoggedIn] = useState(!!role);
-  const [showSeeder, setShowSeeder] = useState(false);
 
   useEffect(() => {
     if (role && ['therapist', 'parent', 'child'].includes(role)) {
@@ -29,7 +27,10 @@ const Index = () => {
     if (userProfile) {
       setSelectedRole(userProfile.role);
       setIsLoggedIn(true);
-      navigate(`/dashboard/${userProfile.role}`);
+      // Use setTimeout to ensure navigation happens after state updates
+      setTimeout(() => {
+        navigate(`/dashboard/${userProfile.role}`);
+      }, 100);
     }
   }, [userProfile, navigate]);
 
@@ -118,23 +119,6 @@ const Index = () => {
           </div>
         </section>
         
-        {/* Development Database Seeder */}
-        {process.env.NODE_ENV === 'development' && (
-          <section className="py-16 bg-muted/30">
-            <div className="container mx-auto px-4">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold mb-4 text-foreground">
-                  Developer Tools
-                </h3>
-                <p className="text-muted-foreground">
-                  Initialize Firebase with sample data for testing
-                </p>
-              </div>
-              
-              <DatabaseSeeder />
-            </div>
-          </section>
-        )}
       </main>
 
       <footer className="bg-foreground text-background py-8">
