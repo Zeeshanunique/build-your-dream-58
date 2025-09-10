@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { UserCheck, Home, Gamepad2, LogIn } from "lucide-react";
 import { useState } from "react";
 import { TourModal } from "@/components/modals/TourModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface UserRoleCardsProps {
   onRoleSelect: (role: string) => void;
@@ -10,6 +12,8 @@ interface UserRoleCardsProps {
 
 export const UserRoleCards = ({ onRoleSelect }: UserRoleCardsProps) => {
   const [showTour, setShowTour] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
+  const { quickLogin } = useAuth();
   const roles = [
     {
       id: "therapist",
@@ -101,13 +105,28 @@ export const UserRoleCards = ({ onRoleSelect }: UserRoleCardsProps) => {
 
                   <Button 
                     className={`w-full bg-${role.color} hover:bg-${role.color}/90 text-white group-hover:shadow-lg transition-all`}
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      onRoleSelect(role.id);
+                      setLoading(role.id);
+                      try {
+                        await quickLogin(role.id as 'therapist' | 'parent' | 'child');
+                        onRoleSelect(role.id);
+                        toast(`Welcome! Logged in as ${role.title}`, {
+                          description: "Demo account created/accessed successfully"
+                        });
+                      } catch (error) {
+                        toast("Login failed", {
+                          description: "Please try again or contact support"
+                        });
+                        console.error('Login error:', error);
+                      } finally {
+                        setLoading(null);
+                      }
                     }}
+                    disabled={loading === role.id}
                   >
                     <LogIn className="mr-2 h-4 w-4" />
-                    Enter as {role.title}
+                    {loading === role.id ? "Connecting..." : `Enter as ${role.title}`}
                   </Button>
                 </CardContent>
               </Card>

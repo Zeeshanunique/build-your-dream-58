@@ -23,17 +23,32 @@ import { PatientList } from "./PatientList";
 import { EEGMonitor } from "./EEGMonitor";
 import { AddPatientModal } from "@/components/modals/AddPatientModal";
 import { useTherapistKPIs, useOverallKPIs, useAllPatients } from "@/hooks/use-database";
+import { usePatients, useReports, useKPIs } from "@/hooks/use-firebase";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 export const TherapistDashboard = () => {
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  
+  const { userProfile } = useAuth();
+  
+  // Use Firebase data if user is authenticated, otherwise fallback to mock data
+  const { patients: firebasePatients, loading: firebasePatientsLoading } = usePatients(userProfile?.uid);
+  const { reports: firebaseReports, generateReport } = useReports(userProfile?.uid);
+  const { kpis: firebaseKpis, loading: firebaseKpisLoading } = useKPIs(userProfile?.uid);
 
-  // Fetch real data from database
-  const { kpis: therapistKPIs, loading: therapistLoading } = useTherapistKPIs(1); // Assuming therapist ID 1
+  // Fallback to mock data
+  const { kpis: therapistKPIs, loading: therapistLoading } = useTherapistKPIs(1);
   const { summary: overallKPIs, loading: overallLoading } = useOverallKPIs();
-  const { patients, loading: patientsLoading } = useAllPatients();
+  const { patients: mockPatients, loading: mockPatientsLoading } = useAllPatients();
+
+  // Use Firebase data if available, otherwise use mock data
+  const patients = userProfile?.uid ? firebasePatients : mockPatients;
+  const patientsLoading = userProfile?.uid ? firebasePatientsLoading : mockPatientsLoading;
+  const kpis = userProfile?.uid ? firebaseKpis : therapistKPIs;
+  const kpisLoading = userProfile?.uid ? firebaseKpisLoading : therapistLoading;
 
   // Calculate dynamic stats from real data
   const stats = [
@@ -46,37 +61,133 @@ export const TherapistDashboard = () => {
     },
     { 
       title: "Sessions This Week", 
-      value: therapistLoading ? "..." : therapistKPIs?.sessions_last_30_days?.toString() || "0", 
+      value: kpisLoading ? "..." : kpis?.recentSessions?.toString() || "0", 
       change: "+12%", 
       icon: Calendar, 
       color: "therapeutic-green" 
     },
     { 
       title: "Avg. Improvement", 
-      value: therapistLoading ? "..." : therapistKPIs?.avg_progress_score ? `${Math.round(therapistKPIs.avg_progress_score * 10)}%` : "0%", 
+      value: kpisLoading ? "..." : kpis?.avgScore ? `${Math.round(kpis.avgScore * 10)}%` : "0%", 
       change: "+5%", 
       icon: TrendingUp, 
       color: "success" 
     },
     { 
-      title: "Total Sessions", 
-      value: therapistLoading ? "..." : therapistKPIs?.total_sessions?.toString() || "0", 
-      change: "+8", 
+      title: "Completion Rate", 
+      value: kpisLoading ? "..." : kpis?.completionRate ? `${Math.round(kpis.completionRate)}%` : "0%", 
+      change: "+8%", 
       icon: Activity, 
       color: "child-purple" 
     }
   ];
 
-  const handleGenerateReport = (reportType: string) => {
+  const handleGenerateReport = async (reportType: string) => {
+    if (!userProfile?.uid) {
+      toast("Authentication required", {
+        description: "Please log in to generate reports"
+      });
+      return;
+    }
+
     setIsGeneratingReport(true);
     
-    // Simulate report generation
-    setTimeout(() => {
-      toast(`${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated successfully! 📊`, {
-        description: "Report is ready for download."
+    try {
+      // Generate report in Firebase
+      await generateReport({
+        patientId: selectedPatient || "all",
+        therapistId: userProfile.uid,
+        type: reportType as 'progress' | 'eeg' | 'insurance',
+        title: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`,
+        status: "generating"
+      });
+
+      // Simulate report generation time
+      setTimeout(async () => {
+        toast(`${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated successfully! 📊`, {
+          description: "Report is ready for download."
+        });
+        setIsGeneratingReport(false);
+      }, 2000);
+      
+    } catch (error) {
+      toast("Report generation failed", {
+        description: "Please try again or contact support"
       });
       setIsGeneratingReport(false);
-    }, 2000);
+    }
+  };
+
+  const handleDownloadReport = (reportName: string) => {
+    // Create a mock PDF blob
+    const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+>>
+endobj
+
+4 0 obj
+<<
+/Length 44
+>>
+stream
+BT
+/F1 12 Tf
+72 720 Td
+(${reportName}) Tj
+ET
+endstream
+endobj
+
+xref
+0 5
+0000000000 65535 f 
+0000000010 00000 n 
+0000000079 00000 n 
+0000000173 00000 n 
+0000000301 00000 n 
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+395
+%%EOF`;
+
+    // Create blob and download
+    const blob = new Blob([pdfContent], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${reportName.toLowerCase().replace(/\s+/g, '-')}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    toast("Report downloaded successfully! 📄", {
+      description: "The PDF report has been saved to your downloads folder."
+    });
   };
 
   const recentActivity = [
@@ -359,28 +470,34 @@ export const TherapistDashboard = () => {
                 <div className="mt-8">
                   <h4 className="font-medium mb-4">Recent Reports</h4>
                   <div className="space-y-3">
-                    {[
-                      { name: "Emma Rodriguez - Progress Summary", date: "Today", type: "Progress", status: "Ready" },
-                      { name: "Lucas Chen - EEG Analysis", date: "Yesterday", type: "EEG", status: "Ready" },
-                      { name: "Monthly Cohort Report", date: "2 days ago", type: "Cohort", status: "Processing" }
-                    ].map((report, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border border-border/50 rounded-lg">
+                    {(userProfile?.uid ? firebaseReports : [
+                      { id: "1", title: "Emma Rodriguez - Progress Summary", createdAt: { toDate: () => new Date() }, type: "Progress", status: "ready" },
+                      { id: "2", title: "Lucas Chen - EEG Analysis", createdAt: { toDate: () => new Date(Date.now() - 86400000) }, type: "EEG", status: "ready" },
+                      { id: "3", title: "Monthly Cohort Report", createdAt: { toDate: () => new Date(Date.now() - 172800000) }, type: "Cohort", status: "generating" }
+                    ]).slice(0, 5).map((report) => (
+                      <div key={report.id} className="flex items-center justify-between p-3 border border-border/50 rounded-lg">
                         <div className="flex items-center space-x-3">
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <div className="font-medium text-sm">{report.name}</div>
-                            <div className="text-xs text-muted-foreground">{report.date} • {report.type}</div>
+                            <div className="font-medium text-sm">{report.title}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {report.createdAt?.toDate ? report.createdAt.toDate().toLocaleDateString() : "Recent"} • {report.type}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Badge 
                             variant="secondary" 
-                            className={report.status === "Ready" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}
+                            className={report.status === "ready" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}
                           >
-                            {report.status}
+                            {report.status === "ready" ? "Ready" : "Processing"}
                           </Badge>
-                          {report.status === "Ready" && (
-                            <Button size="sm" variant="outline">
+                          {report.status === "ready" && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDownloadReport(report.title)}
+                            >
                               <Download className="h-3 w-3 mr-1" />
                               Download
                             </Button>

@@ -6,6 +6,7 @@ import { LogOut, Bell, Settings, User } from "lucide-react";
 import { TherapistDashboard } from "./TherapistDashboard";
 import { ParentDashboard } from "./ParentDashboard";
 import { ChildDashboard } from "./ChildDashboard";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface DashboardProps {
@@ -15,10 +16,20 @@ interface DashboardProps {
 
 export const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("overview");
+  const { logout, userProfile } = useAuth();
 
-  const handleLogout = () => {
-    toast("Logged out successfully");
-    onLogout();
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast("Logged out successfully! 👋", {
+        description: "You have been signed out of your session."
+      });
+      onLogout();
+    } catch (error) {
+      toast("Logout failed", {
+        description: "Please try again"
+      });
+    }
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -27,6 +38,15 @@ export const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
       case "parent": return "Parent/Caregiver";
       case "child": return "Young Learner";
       default: return "User";
+    }
+  };
+
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case "therapist": return "👩‍⚕️";
+      case "parent": return "👨‍👩‍👧‍👦";
+      case "child": return "👶";
+      default: return "👤";
     }
   };
 
@@ -46,12 +66,11 @@ export const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 bg-${getRoleColor(userRole)} rounded-full`}></div>
+              <div>
                 <h1 className="text-2xl font-bold text-foreground">CogniCare</h1>
               </div>
               <div className={`px-3 py-1 bg-${getRoleColor(userRole)}/10 text-${getRoleColor(userRole)} rounded-full text-sm font-medium`}>
-                {getRoleDisplayName(userRole)}
+                {userProfile?.name || getRoleDisplayName(userRole)}
               </div>
             </div>
             

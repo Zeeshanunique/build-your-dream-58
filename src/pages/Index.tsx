@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain, Users, Home, BarChart3, Heart, Zap, Shield } from "lucide-react";
@@ -8,17 +9,28 @@ import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
 const Index = () => {
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { role } = useParams();
+  const navigate = useNavigate();
+  const [selectedRole, setSelectedRole] = useState<string | null>(role || null);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!role);
+
+  useEffect(() => {
+    if (role && ['therapist', 'parent', 'child'].includes(role)) {
+      setSelectedRole(role);
+      setIsLoggedIn(true);
+    }
+  }, [role]);
 
   const handleRoleSelect = (role: string) => {
     setSelectedRole(role);
     setIsLoggedIn(true);
+    navigate(`/dashboard/${role}`);
   };
 
   const handleLogout = () => {
     setSelectedRole(null);
     setIsLoggedIn(false);
+    navigate('/');
   };
 
   if (isLoggedIn && selectedRole) {
