@@ -29,6 +29,12 @@ export interface Patient {
   completedSessions: number;
   totalSessions: number;
   therapistId: string;
+  parentInfo?: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  notes?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -54,6 +60,7 @@ export interface Report {
   title: string;
   status: 'generating' | 'ready' | 'error';
   fileUrl?: string;
+  data?: Record<string, unknown>;
   createdAt: Timestamp;
 }
 
@@ -66,12 +73,15 @@ export const usePatients = (therapistId?: string) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const patientsRef = collection(db, 'patients');
-    const q = therapistId 
-      ? query(patientsRef, where('therapistId', '==', therapistId), orderBy('createdAt', 'desc'))
-      : query(patientsRef, orderBy('createdAt', 'desc'));
+    if (!therapistId) {
+      setLoading(false);
+      return;
+    }
 
-    const unsubscribe = onSnapshot(q, 
+    const patientsRef = collection(db, 'patients');
+    const q = query(patientsRef, where('therapistId', '==', therapistId), orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q,
       (snapshot) => {
         const patientsData = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -81,6 +91,7 @@ export const usePatients = (therapistId?: string) => {
         setLoading(false);
       },
       (err) => {
+        console.error('Error fetching patients:', err);
         setError(err.message);
         setLoading(false);
       }
@@ -221,12 +232,13 @@ export const useReports = (therapistId?: string) => {
     return () => unsubscribe();
   }, [therapistId]);
 
-  const generateReport = async (reportData: Omit<Report, 'id' | 'createdAt'>) => {
+  const generateReport = async (reportData: Omit<Report, 'id' | 'createdAt'>): Promise<string> => {
     try {
-      await addDoc(collection(db, 'reports'), {
+      const docRef = await addDoc(collection(db, 'reports'), {
         ...reportData,
         createdAt: Timestamp.now()
       });
+      return docRef.id;
     } catch (err) {
       throw new Error(`Failed to generate report: ${err}`);
     }

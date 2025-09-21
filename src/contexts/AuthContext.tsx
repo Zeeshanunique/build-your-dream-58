@@ -124,27 +124,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Quick login for demo purposes
+  // Quick login for demo purposes with improved error handling and data seeding
   const quickLogin = async (role: 'therapist' | 'parent' | 'child') => {
     const demoUsers = {
       therapist: { email: 'therapist@cognicare.com', password: 'demo123', name: 'Dr. Sarah Smith' },
-      parent: { email: 'parent@cognicare.com', password: 'demo123', name: 'John Parent' },
-      child: { email: 'child@cognicare.com', password: 'demo123', name: 'Emma Child' }
+      parent: { email: 'parent@cognicare.com', password: 'demo123', name: 'Jennifer Rodriguez' },
+      child: { email: 'child@cognicare.com', password: 'demo123', name: 'Emma Rodriguez' }
     };
 
     const demoUser = demoUsers[role];
-    
+
     try {
       // Try to sign in first
       await signIn(demoUser.email, demoUser.password);
-    } catch (error) {
+
+      // Seed initial data if this is a new login
+      await seedInitialData(role);
+
+    } catch (error: any) {
       // If sign in fails, create the demo user
-      try {
-        await signUp(demoUser.email, demoUser.password, demoUser.name, role);
-      } catch (signUpError) {
-        console.error('Failed to create demo user:', signUpError);
-        throw signUpError;
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        try {
+          await signUp(demoUser.email, demoUser.password, demoUser.name, role);
+          // Seed initial data for new user
+          await seedInitialData(role);
+        } catch (signUpError) {
+          console.error('Failed to create demo user:', signUpError);
+          throw signUpError;
+        }
+      } else {
+        throw error;
       }
+    }
+  };
+
+  // Function to seed initial data for demo users
+  const seedInitialData = async (role: 'therapist' | 'parent' | 'child') => {
+    if (!auth.currentUser) return;
+
+    try {
+      const { seedDemoData } = await import('@/lib/firebase-service');
+      await seedDemoData(auth.currentUser.uid, role);
+    } catch (error) {
+      console.error('Error seeding initial data:', error);
+      // Don't throw error - this shouldn't prevent login
     }
   };
 

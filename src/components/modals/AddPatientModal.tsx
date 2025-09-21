@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { usePatients } from "@/hooks/use-firebase";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface AddPatientModalProps {
@@ -23,16 +25,54 @@ export const AddPatientModal = ({ open, onOpenChange }: AddPatientModalProps) =>
     parentPhone: "",
     notes: ""
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { userProfile } = useAuth();
+  const { addPatient } = usePatients(userProfile?.uid);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    if (!userProfile?.uid) {
+      toast("Authentication required", {
+        description: "Please log in to add patients"
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Create new patient in Firebase
+      await addPatient({
+        name: `${formData.firstName} ${formData.lastName}`,
+        age: parseInt(formData.age),
+        condition: formData.condition === 'adhd' ? 'ADHD' :
+                  formData.condition === 'autism' ? 'Autism Spectrum Disorder' :
+                  formData.condition === 'learning-disability' ? 'Learning Disability' :
+                  formData.condition === 'processing-disorder' ? 'Processing Disorder' :
+                  formData.condition === 'memory-difficulties' ? 'Memory Difficulties' :
+                  'Other',
+        progress: 0,
+        trend: 'stable' as const,
+        status: 'active' as const,
+        lastSession: "",
+        nextSession: "",
+        completedSessions: 0,
+        totalSessions: 0,
+        therapistId: userProfile.uid,
+        parentInfo: {
+          name: formData.parentName,
+          email: formData.parentEmail,
+          phone: formData.parentPhone
+        },
+        notes: formData.notes
+      });
+
       toast("New patient added successfully! 🎉", {
         description: `${formData.firstName} ${formData.lastName} has been added to your patient list.`
       });
-      
+
       // Reset form
       setFormData({
         firstName: "",
@@ -44,9 +84,16 @@ export const AddPatientModal = ({ open, onOpenChange }: AddPatientModalProps) =>
         parentPhone: "",
         notes: ""
       });
-      
+
       onOpenChange(false);
-    }, 1000);
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      toast("Failed to add patient", {
+        description: "Please try again or contact support"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -179,11 +226,20 @@ export const AddPatientModal = ({ open, onOpenChange }: AddPatientModalProps) =>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary-dark text-white">
-              Add Patient
+            <Button
+              type="submit"
+              className="bg-primary hover:bg-primary-dark text-white"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Adding..." : "Add Patient"}
             </Button>
           </div>
         </form>

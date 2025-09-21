@@ -18,42 +18,79 @@ import {
   Settings
 } from "lucide-react";
 import { useEEGData, useAllPatients } from "@/hooks/use-database";
+import { usePatients } from "@/hooks/use-firebase";
+import { useAuth } from "@/contexts/AuthContext";
+import { firebaseService } from "@/lib/firebase-service";
 import { toast } from "sonner";
 
 export const EEGMonitor = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connected");
   const [sessionTime, setSessionTime] = useState(0);
-  const [selectedPatientId, setSelectedPatientId] = useState(1); // Default to first patient
-  
-  // Fetch real data from database
-  const { patients } = useAllPatients();
-  const { eegData: dbEegData, loading } = useEEGData(selectedPatientId, 3); // Get EEG data for session 3
+  const [selectedPatientId, setSelectedPatientId] = useState<string>("1"); // Changed to string for Firebase compatibility
+  const [realTimeEEGData, setRealTimeEEGData] = useState<Array<{
+    id: string;
+    alpha: number;
+    beta: number;
+    theta: number;
+    delta: number;
+    gamma: number;
+  }>>([]);
 
+  const { userProfile } = useAuth();
+
+  // Use Firebase data if user is authenticated, otherwise fallback to mock data
+  const { patients: firebasePatients } = usePatients(userProfile?.uid);
+  const { patients: mockPatients } = useAllPatients();
+  const { eegData: mockEegData } = useEEGData(parseInt(selectedPatientId), 3);
+
+  const patients = userProfile?.uid ? firebasePatients : mockPatients;
   const activePatient = patients?.find(p => p.id === selectedPatientId)?.name || "No patient selected";
 
   // Use real EEG data if available, otherwise use simulated data
   const [eegData, setEegData] = useState({
-    alpha: dbEegData?.[0]?.alpha_waves || 45,
-    beta: dbEegData?.[0]?.beta_waves || 32,
-    theta: dbEegData?.[0]?.theta_waves || 28,
-    delta: dbEegData?.[0]?.delta_waves || 15,
-    gamma: 8 // Not in DB, use default
+    alpha: 45,
+    beta: 32,
+    theta: 28,
+    delta: 15,
+    gamma: 8
   });
 
-  // Update EEG data when database data changes
+  // Fetch real-time EEG data from Firebase when authenticated
   useEffect(() => {
-    if (dbEegData && dbEegData.length > 0) {
-      const latestReading = dbEegData[dbEegData.length - 1];
+    if (userProfile?.uid && selectedPatientId) {
+      const fetchEEGData = async () => {
+        try {
+          const data = await firebaseService.getEEGData(selectedPatientId);
+          if (data && data.length > 0) {
+            const latestReading = data[data.length - 1];
+            setEegData({
+              alpha: latestReading.alpha,
+              beta: latestReading.beta,
+              theta: latestReading.theta,
+              delta: latestReading.delta,
+              gamma: latestReading.gamma
+            });
+            setRealTimeEEGData(data.slice(-20)); // Keep last 20 readings for display
+          }
+        } catch (error) {
+          console.error('Error fetching EEG data:', error);
+        }
+      };
+
+      fetchEEGData();
+    } else if (mockEegData && mockEegData.length > 0) {
+      // Use mock data as fallback
+      const latestReading = mockEegData[mockEegData.length - 1];
       setEegData({
         alpha: latestReading.alpha_waves,
         beta: latestReading.beta_waves,
         theta: latestReading.theta_waves,
         delta: latestReading.delta_waves,
-        gamma: 8 // Not in DB schema
+        gamma: 8 // Not in mock DB schema
       });
     }
-  }, [dbEegData]);
+  }, [userProfile?.uid, selectedPatientId, mockEegData]);
 
   // Simulate session timer
   useEffect(() => {

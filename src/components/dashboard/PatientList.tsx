@@ -15,7 +15,9 @@ import {
   MoreHorizontal,
   Activity
 } from "lucide-react";
-import { useAllPatients, usePatientSessions } from "@/hooks/use-database";
+import { usePatients } from "@/hooks/use-firebase";
+import { useAllPatients } from "@/hooks/use-database";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface PatientListProps {
@@ -24,9 +26,16 @@ interface PatientListProps {
 
 export const PatientList = ({ onPatientSelect }: PatientListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // Fetch real patient data from database
-  const { patients: dbPatients, loading: patientsLoading, error } = useAllPatients();
+  const { userProfile } = useAuth();
+
+  // Use Firebase data if user is authenticated, otherwise fallback to mock data
+  const { patients: firebasePatients, loading: firebasePatientsLoading } = usePatients(userProfile?.uid);
+  const { patients: mockPatients, loading: mockPatientsLoading } = useAllPatients();
+
+  // Choose data source based on authentication status
+  const dbPatients = userProfile?.uid ? firebasePatients : mockPatients;
+  const patientsLoading = userProfile?.uid ? firebasePatientsLoading : mockPatientsLoading;
+  const error = null; // Remove error from mock hook since it doesn't provide it
 
   // Transform database patients to match component interface
   const patients = dbPatients?.map(patient => {

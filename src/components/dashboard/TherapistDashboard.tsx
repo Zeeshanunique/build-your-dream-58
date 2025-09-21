@@ -36,7 +36,7 @@ export const TherapistDashboard = () => {
   
   // Use Firebase data if user is authenticated, otherwise fallback to mock data
   const { patients: firebasePatients, loading: firebasePatientsLoading } = usePatients(userProfile?.uid);
-  const { reports: firebaseReports, generateReport } = useReports(userProfile?.uid);
+  const { reports: firebaseReports, generateReport, updateReport } = useReports(userProfile?.uid);
   const { kpis: firebaseKpis, loading: firebaseKpisLoading } = useKPIs(userProfile?.uid);
 
   // Fallback to mock data
@@ -91,26 +91,68 @@ export const TherapistDashboard = () => {
     }
 
     setIsGeneratingReport(true);
-    
-    try {
-      // Generate report in Firebase
-      await generateReport({
-        patientId: selectedPatient || "all",
-        therapistId: userProfile.uid,
-        type: reportType as 'progress' | 'eeg' | 'insurance',
-        title: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`,
-        status: "generating"
-      });
 
-      // Simulate report generation time
-      setTimeout(async () => {
-        toast(`${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated successfully! 📊`, {
-          description: "Report is ready for download."
+    try {
+      // Get patient data for the report
+      const patientData = selectedPatient
+        ? patients?.find(p => p.id === selectedPatient)
+        : null;
+
+      // Generate report title with specific patient if selected
+      const reportTitle = selectedPatient && patientData
+        ? `${patientData.name} - ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`
+        : `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report`;
+
+      // Create report in Firebase
+      if (generateReport) {
+        const reportId = await generateReport({
+          patientId: selectedPatient || "all",
+          therapistId: userProfile.uid,
+          type: reportType as 'progress' | 'eeg' | 'insurance',
+          title: reportTitle,
+          status: "generating",
+          data: {
+            generatedAt: new Date().toISOString(),
+            reportType,
+            patientId: selectedPatient,
+            therapistName: userProfile.name,
+            patientName: patientData?.name || "All Patients"
+          }
         });
-        setIsGeneratingReport(false);
-      }, 2000);
-      
+
+        // Simulate report generation processing
+        setTimeout(async () => {
+          try {
+            // Update report status to ready
+            if (updateReport) {
+              await updateReport(reportId, {
+                status: "ready",
+                data: {
+                  generatedAt: new Date().toISOString(),
+                  reportType,
+                  patientId: selectedPatient,
+                  therapistName: userProfile.name,
+                  patientName: patientData?.name || "All Patients",
+                  completed: true
+                }
+              });
+            }
+
+            toast(`${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated successfully! 📊`, {
+              description: "Report is ready for download."
+            });
+          } catch (updateError) {
+            console.error('Error updating report status:', updateError);
+            toast("Report generation completed with warnings", {
+              description: "Report may be ready for download."
+            });
+          }
+          setIsGeneratingReport(false);
+        }, 2000);
+      }
+
     } catch (error) {
+      console.error('Error generating report:', error);
       toast("Report generation failed", {
         description: "Please try again or contact support"
       });
@@ -118,24 +160,37 @@ export const TherapistDashboard = () => {
     }
   };
 
-  const handleDownloadReport = async (reportName: string) => {
+  const handleDownloadReport = async (reportName: string, reportData?: Record<string, unknown>) => {
     try {
       // Import jsPDF dynamically
       const { default: jsPDF } = await import('jspdf');
-      
+
       // Create new PDF document
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       let yPosition = 20;
+
+      // Get real patient data if available
+      const getPatientForReport = (patientName: string) => {
+        if (userProfile?.uid && patients) {
+          return patients.find(p => p.name.includes(patientName));
+        }
+        return null;
+      };
       
       // Helper function to add text with word wrapping
-      const addText = (text: string, x: number, y: number, options: any = {}) => {
+      const addText = (text: string, x: number, y: number, options: {
+        fontSize?: number;
+        fontStyle?: string;
+        color?: string;
+        maxWidth?: number;
+      } = {}) => {
         const { fontSize = 10, fontStyle = 'normal', color = '#000000', maxWidth = pageWidth - 40 } = options;
         doc.setFontSize(fontSize);
-        doc.setFont('helvetica', fontStyle);
+        doc.setFont('helvetica', fontStyle as any);
         doc.setTextColor(color);
-        
+
         const lines = doc.splitTextToSize(text, maxWidth);
         doc.text(lines, x, y);
         return y + (lines.length * fontSize * 0.4) + 5;
