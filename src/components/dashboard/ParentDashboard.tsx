@@ -18,36 +18,89 @@ import {
 import { MessageModal } from "@/components/modals/MessageModal";
 import { useState } from "react";
 import { toast } from "sonner";
+import { usePatients, useSessions, useKPIs } from "@/hooks/use-sqlite";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const ParentDashboard = () => {
   const [showMessageModal, setShowMessageModal] = useState(false);
-  const childStats = {
-    name: "Emma",
-    age: 8,
-    sessionsCompleted: 24,
-    totalSessions: 30,
-    weeklyGoal: 5,
-    currentStreak: 3,
-    overallProgress: 72
-  };
+  const { userProfile } = useAuth();
+  const { patients, loading: patientsLoading } = usePatients();
+  const { sessions, loading: sessionsLoading } = useSessions();
+  const { kpis, loading: kpisLoading } = useKPIs();
 
-  const recentAchievements = [
-    { title: "Memory Master", description: "Completed 10 memory exercises", icon: "🧠", date: "2 days ago" },
-    { title: "Focus Champion", description: "20 minutes focused attention", icon: "🎯", date: "3 days ago" },
-    { title: "Problem Solver", description: "Solved complex puzzle sequence", icon: "🧩", date: "5 days ago" }
+  // Get the child's data (assuming parent has one child for now)
+  const child = patients?.[0]; // For demo, using first patient as child
+  
+  if (patientsLoading || sessionsLoading || kpisLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your child's progress...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!child) {
+    return (
+      <div className="text-center py-12">
+        <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium mb-2">No child profile found</h3>
+        <p className="text-muted-foreground">
+          Please contact your therapist to set up your child's profile.
+        </p>
+      </div>
+    );
+  }
+
+  // Calculate dynamic stats from real data
+  const childSessions = sessions?.filter(s => s.patient_id === child.id) || [];
+  const childKPIs = kpis?.filter(k => k.patient_id === child.id) || [];
+  
+  const sessionsCompleted = childSessions.length;
+  const totalSessions = child.total_sessions || 30; // Default if not set
+  const weeklyGoal = 5;
+  const currentStreak = Math.min(7, Math.floor(sessionsCompleted / 2)); // Estimate based on sessions
+  const overallProgress = child.progress || Math.round((sessionsCompleted / totalSessions) * 100);
+
+  // Calculate cognitive areas progress from KPIs
+  const cognitiveAreas = [
+    { 
+      name: "Attention & Focus", 
+      progress: Math.round(childKPIs.filter(k => k.metric_type === 'attention_span_minutes').reduce((sum, k) => sum + k.metric_value, 0) / Math.max(childKPIs.filter(k => k.metric_type === 'attention_span_minutes').length, 1) * 4) || 78, 
+      trend: "improving" 
+    },
+    { 
+      name: "Working Memory", 
+      progress: Math.round(childKPIs.filter(k => k.metric_type === 'memory_recall_percentage').reduce((sum, k) => sum + k.metric_value, 0) / Math.max(childKPIs.filter(k => k.metric_type === 'memory_recall_percentage').length, 1)) || 65, 
+      trend: "stable" 
+    },
+    { 
+      name: "Problem Solving", 
+      progress: Math.round(childKPIs.filter(k => k.metric_type === 'accuracy_percentage').reduce((sum, k) => sum + k.metric_value, 0) / Math.max(childKPIs.filter(k => k.metric_type === 'accuracy_percentage').length, 1)) || 82, 
+      trend: "improving" 
+    },
+    { 
+      name: "Processing Speed", 
+      progress: Math.round(childKPIs.filter(k => k.metric_type === 'reaction_time_ms').reduce((sum, k) => sum + (1000 - k.metric_value), 0) / Math.max(childKPIs.filter(k => k.metric_type === 'reaction_time_ms').length, 1) / 10) || 71, 
+      trend: "improving" 
+    }
   ];
 
+  // Generate recent achievements from sessions
+  const recentAchievements = childSessions.slice(0, 3).map((session, index) => ({
+    title: session.session_type,
+    description: `${session.duration_minutes} minutes completed`,
+    icon: index === 0 ? "🧠" : index === 1 ? "🎯" : "🧩",
+    date: new Date(session.session_date).toLocaleDateString()
+  }));
+
+  // Generate upcoming activities (mock for now, could be from schedule)
   const upcomingActivities = [
     { time: "3:00 PM", activity: "Attention Training", duration: "20 min", type: "cognitive" },
     { time: "4:30 PM", activity: "EEG Session", duration: "30 min", type: "feedback" },
     { time: "7:00 PM", activity: "Family Review", duration: "15 min", type: "review" }
-  ];
-
-  const cognitiveAreas = [
-    { name: "Attention & Focus", progress: 78, trend: "improving" },
-    { name: "Working Memory", progress: 65, trend: "stable" },
-    { name: "Problem Solving", progress: 82, trend: "improving" },
-    { name: "Processing Speed", progress: 71, trend: "improving" }
   ];
 
   return (
@@ -57,13 +110,13 @@ export const ParentDashboard = () => {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Welcome back!</h1>
           <p className="text-muted-foreground mt-1">
-            {childStats.name} has completed {childStats.sessionsCompleted} out of {childStats.totalSessions} training sessions.
+            {child.name} has completed {sessionsCompleted} out of {totalSessions} training sessions.
           </p>
         </div>
         <div className="text-center">
           <div className="text-3xl mb-2">🌟</div>
           <Badge variant="secondary" className="bg-therapeutic-green/10 text-therapeutic-green">
-            {childStats.currentStreak} day streak!
+            {currentStreak} day streak!
           </Badge>
         </div>
       </div>
@@ -73,7 +126,7 @@ export const ParentDashboard = () => {
         <Card className="text-center border-therapeutic-green/20">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-therapeutic-green">
-              {childStats.overallProgress}%
+              {overallProgress}%
             </div>
             <p className="text-sm text-muted-foreground">Overall Progress</p>
           </CardContent>
@@ -82,7 +135,7 @@ export const ParentDashboard = () => {
         <Card className="text-center border-primary/20">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-primary">
-              {childStats.sessionsCompleted}
+              {sessionsCompleted}
             </div>
             <p className="text-sm text-muted-foreground">Sessions Completed</p>
           </CardContent>
@@ -91,7 +144,7 @@ export const ParentDashboard = () => {
         <Card className="text-center border-child-purple/20">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-child-purple">
-              {childStats.currentStreak}
+              {currentStreak}
             </div>
             <p className="text-sm text-muted-foreground">Day Streak</p>
           </CardContent>
@@ -126,7 +179,7 @@ export const ParentDashboard = () => {
                   Today's Activities
                 </CardTitle>
                 <CardDescription>
-                  {childStats.name}'s scheduled training sessions
+                  {child.name}'s scheduled training sessions
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -169,7 +222,7 @@ export const ParentDashboard = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium">Training Sessions</span>
                     <span className="text-sm text-muted-foreground">
-                      3 of {childStats.weeklyGoal} completed
+                      3 of {weeklyGoal} completed
                     </span>
                   </div>
                   <Progress value={60} className="h-2" />
@@ -205,7 +258,7 @@ export const ParentDashboard = () => {
               <CardHeader>
                 <CardTitle>Cognitive Development Areas</CardTitle>
                 <CardDescription>
-                  {childStats.name}'s progress in key cognitive skills
+                  {child.name}'s progress in key cognitive skills
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -277,7 +330,7 @@ export const ParentDashboard = () => {
                 Recent Achievements
               </CardTitle>
               <CardDescription>
-                Celebrate {childStats.name}'s cognitive training milestones
+                Celebrate {child.name}'s cognitive training milestones
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -309,7 +362,7 @@ export const ParentDashboard = () => {
                 Therapist Messages
               </CardTitle>
               <CardDescription>
-                Communication with {childStats.name}'s care team
+                Communication with {child.name}'s care team
               </CardDescription>
             </CardHeader>
             <CardContent>

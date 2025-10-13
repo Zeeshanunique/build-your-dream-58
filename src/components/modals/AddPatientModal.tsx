@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { usePatients } from "@/hooks/use-firebase";
+import { usePatients } from "@/hooks/use-sqlite";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -28,12 +28,12 @@ export const AddPatientModal = ({ open, onOpenChange }: AddPatientModalProps) =>
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { userProfile } = useAuth();
-  const { addPatient } = usePatients(userProfile?.uid);
+  const { createPatient } = usePatients();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!userProfile?.uid) {
+    if (!userProfile?.id) {
       toast("Authentication required", {
         description: "Please log in to add patients"
       });
@@ -43,8 +43,8 @@ export const AddPatientModal = ({ open, onOpenChange }: AddPatientModalProps) =>
     setIsSubmitting(true);
 
     try {
-      // Create new patient in Firebase
-      await addPatient({
+      // Create new patient in SQLite
+      await createPatient({
         name: `${formData.firstName} ${formData.lastName}`,
         age: parseInt(formData.age),
         condition: formData.condition === 'adhd' ? 'ADHD' :
@@ -53,19 +53,8 @@ export const AddPatientModal = ({ open, onOpenChange }: AddPatientModalProps) =>
                   formData.condition === 'processing-disorder' ? 'Processing Disorder' :
                   formData.condition === 'memory-difficulties' ? 'Memory Difficulties' :
                   'Other',
-        progress: 0,
-        trend: 'stable' as const,
-        status: 'active' as const,
-        lastSession: "",
-        nextSession: "",
-        completedSessions: 0,
-        totalSessions: 0,
-        therapistId: userProfile.uid,
-        parentInfo: {
-          name: formData.parentName,
-          email: formData.parentEmail,
-          phone: formData.parentPhone
-        },
+        therapist_id: userProfile.id,
+        parent_id: 1, // Default parent ID for now
         notes: formData.notes
       });
 

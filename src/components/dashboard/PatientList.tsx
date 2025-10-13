@@ -15,9 +15,9 @@ import {
   MoreHorizontal,
   Activity
 } from "lucide-react";
-import { usePatients } from "@/hooks/use-firebase";
-import { useAllPatients } from "@/hooks/use-database";
+import { usePatients } from "@/hooks/use-sqlite";
 import { useAuth } from "@/contexts/AuthContext";
+import { PatientDetailsModal } from "@/components/modals/PatientDetailsModal";
 import { toast } from "sonner";
 
 interface PatientListProps {
@@ -26,36 +26,44 @@ interface PatientListProps {
 
 export const PatientList = ({ onPatientSelect }: PatientListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
   const { userProfile } = useAuth();
 
-  // Use Firebase data if user is authenticated, otherwise fallback to mock data
-  const { patients: firebasePatients, loading: firebasePatientsLoading } = usePatients(userProfile?.uid);
-  const { patients: mockPatients, loading: mockPatientsLoading } = useAllPatients();
-
-  // Choose data source based on authentication status
-  const dbPatients = userProfile?.uid ? firebasePatients : mockPatients;
-  const patientsLoading = userProfile?.uid ? firebasePatientsLoading : mockPatientsLoading;
-  const error = null; // Remove error from mock hook since it doesn't provide it
+  // Use SQLite for all data operations
+  const { patients: dbPatients, loading: patientsLoading, error } = usePatients();
 
   // Transform database patients to match component interface
   const patients = dbPatients?.map(patient => {
-    // Calculate some derived data
-    const progress = Math.floor(Math.random() * 40) + 60; // Random progress between 60-100
-    const totalSessions = Math.floor(Math.random() * 20) + 10; // Random total sessions
-    const completedSessions = Math.floor(totalSessions * 0.7); // 70% completion rate
-    
+    // Use real data from the database
+    const progress = patient.progress || 0;
+    const totalSessions = patient.total_sessions || 0;
+    const completedSessions = patient.completed_sessions || 0;
+    const formatDate = (dateString: string) => {
+      if (!dateString) return "Not scheduled";
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+      if (diffHours < 24) {
+        if (diffHours < 1) return `${Math.floor(diffHours * 60)} minutes ago`;
+        return `${Math.floor(diffHours)} hours ago`;
+      }
+      return date.toLocaleDateString();
+    };
+
     return {
-      id: patient.id.toString(),
+      id: patient.id?.toString() || '',
       name: patient.name,
       age: patient.age,
       condition: patient.condition,
-      lastSession: "2 hours ago", // This would come from session data
-      nextSession: "Tomorrow 3:00 PM", // This would come from scheduling data
+      lastSession: formatDate(patient.last_session),
+      nextSession: formatDate(patient.next_session),
       progress: progress,
-      status: progress > 75 ? "active" : progress > 50 ? "scheduled" : "attention",
+      status: patient.status || 'active',
       totalSessions: totalSessions,
       completedSessions: completedSessions,
-      trend: progress > 75 ? "improving" : progress > 50 ? "stable" : "concerning"
+      trend: patient.trend || 'stable'
     };
   }) || [];
 
@@ -139,8 +147,10 @@ export const PatientList = ({ onPatientSelect }: PatientListProps) => {
   };
 
   const handlePatientClick = (patientId: string) => {
+    setSelectedPatientId(patientId);
+    setShowPatientDetails(true);
     onPatientSelect(patientId);
-    toast(`Viewing details for patient #${patientId}`);
+    toast(`Opening details for ${patients.find(p => p.id?.toString() === patientId)?.name || 'patient'}`);
   };
 
   return (
@@ -283,6 +293,13 @@ export const PatientList = ({ onPatientSelect }: PatientListProps) => {
           </div>
         )}
       </CardContent>
+      
+      {/* Patient Details Modal */}
+      <PatientDetailsModal
+        patientId={selectedPatientId}
+        open={showPatientDetails}
+        onOpenChange={setShowPatientDetails}
+      />
     </Card>
   );
 };

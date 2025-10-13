@@ -5,6 +5,12 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Star, Trophy, Heart, Brain, Target, Zap, Home, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { MemoryMatchGame } from "@/components/games/MemoryMatchGame";
+import { FocusForestGame } from "@/components/games/FocusForestGame";
+import { PuzzlePalaceGame } from "@/components/games/PuzzlePalaceGame";
+import { SpeedRacerGame } from "@/components/games/SpeedRacerGame";
+import { BrainBoostGame } from "@/components/games/BrainBoostGame";
+import { CreativityCastleGame } from "@/components/games/CreativityCastleGame";
 
 interface GameModalProps {
   open: boolean;
@@ -112,7 +118,9 @@ export const GameModal = ({ open, onOpenChange, gameId, gameTitle }: GameModalPr
             { label: "Easy Match", action: "correct", color: "success" },
             { label: "Hard Match", action: "bonus", color: "warning" },
             { label: "Miss", action: "incorrect", color: "destructive" }
-          ]
+          ],
+          cognitiveSkill: "Memory",
+          difficulty: "Easy"
         };
       case "focus-forest":
         return {
@@ -123,7 +131,9 @@ export const GameModal = ({ open, onOpenChange, gameId, gameTitle }: GameModalPr
             { label: "Help Animal", action: "correct", color: "success" },
             { label: "Super Focus", action: "bonus", color: "primary" },
             { label: "Distracted", action: "incorrect", color: "destructive" }
-          ]
+          ],
+          cognitiveSkill: "Attention",
+          difficulty: "Medium"
         };
       case "puzzle-palace":
         return {
@@ -134,7 +144,48 @@ export const GameModal = ({ open, onOpenChange, gameId, gameTitle }: GameModalPr
             { label: "Solve Puzzle", action: "correct", color: "success" },
             { label: "Find Treasure", action: "bonus", color: "warning" },
             { label: "Wrong Move", action: "incorrect", color: "destructive" }
-          ]
+          ],
+          cognitiveSkill: "Problem Solving",
+          difficulty: "Medium"
+        };
+      case "speed-racer":
+        return {
+          icon: "🏎️",
+          color: "primary",
+          instructions: "Race through challenges at lightning speed!",
+          actions: [
+            { label: "Quick Answer", action: "correct", color: "success" },
+            { label: "Lightning Fast", action: "bonus", color: "warning" },
+            { label: "Too Slow", action: "incorrect", color: "destructive" }
+          ],
+          cognitiveSkill: "Processing Speed",
+          difficulty: "Hard"
+        };
+      case "brain-boost":
+        return {
+          icon: "⚡",
+          color: "warning",
+          instructions: "Combine all your skills in ultimate challenges!",
+          actions: [
+            { label: "Multi-Skill", action: "correct", color: "success" },
+            { label: "Perfect Combo", action: "bonus", color: "warning" },
+            { label: "Need Practice", action: "incorrect", color: "destructive" }
+          ],
+          cognitiveSkill: "Comprehensive",
+          difficulty: "Expert"
+        };
+      case "creativity-castle":
+        return {
+          icon: "🎨",
+          color: "child-purple",
+          instructions: "Unleash your imagination and creative thinking!",
+          actions: [
+            { label: "Creative Idea", action: "correct", color: "success" },
+            { label: "Genius Move", action: "bonus", color: "warning" },
+            { label: "Try Again", action: "incorrect", color: "destructive" }
+          ],
+          cognitiveSkill: "Creativity",
+          difficulty: "Expert"
         };
       default:
         return {
@@ -145,7 +196,9 @@ export const GameModal = ({ open, onOpenChange, gameId, gameTitle }: GameModalPr
             { label: "Success", action: "correct", color: "success" },
             { label: "Perfect!", action: "bonus", color: "warning" },
             { label: "Try Again", action: "incorrect", color: "destructive" }
-          ]
+          ],
+          cognitiveSkill: "General",
+          difficulty: "Easy"
         };
     }
   };
@@ -178,82 +231,94 @@ export const GameModal = ({ open, onOpenChange, gameId, gameTitle }: GameModalPr
               <Badge className="bg-success text-white ml-2">Completed!</Badge>
             )}
           </DialogTitle>
-          <DialogDescription>
-            {gameContent.instructions}
+          <DialogDescription className="space-y-2">
+            <p>{gameContent.instructions}</p>
+            <div className="flex items-center space-x-2">
+              <Badge variant="outline" className="text-xs">
+                <Brain className="h-3 w-3 mr-1" />
+                {gameContent.cognitiveSkill}
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                <Target className="h-3 w-3 mr-1" />
+                {gameContent.difficulty}
+              </Badge>
+            </div>
           </DialogDescription>
         </DialogHeader>
 
-        {/* Game Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-primary/10 rounded-lg">
-            <div className="text-2xl font-bold text-primary">{score}</div>
-            <div className="text-xs text-muted-foreground">Score</div>
-          </div>
-          <div className="text-center p-3 bg-destructive/10 rounded-lg">
-            <div className="flex justify-center space-x-1">
-              {[...Array(3)].map((_, i) => (
-                <Heart key={i} className={`h-5 w-5 ${i < lives ? 'text-destructive fill-current' : 'text-muted-foreground'}`} />
-              ))}
-            </div>
-            <div className="text-xs text-muted-foreground">Lives</div>
-          </div>
-          <div className="text-center p-3 bg-warning/10 rounded-lg">
-            <div className="text-2xl font-bold text-warning">{timeLeft}s</div>
-            <div className="text-xs text-muted-foreground">Time</div>
-          </div>
-          <div className="text-center p-3 bg-therapeutic-green/10 rounded-lg">
-            <div className="text-2xl font-bold text-therapeutic-green">{level}</div>
-            <div className="text-xs text-muted-foreground">Level</div>
-          </div>
-        </div>
 
         {/* Game Area */}
-        <div className={`min-h-[200px] bg-${gameContent.color}/5 border-2 border-${gameContent.color}/20 rounded-lg p-6 flex items-center justify-center`}>
-          {gameState === "playing" ? (
-            <div className="text-center space-y-6">
-              <div className="text-8xl animate-gentle-float">{gameContent.icon}</div>
-              <p className="text-lg font-medium">Training your cognitive abilities...</p>
-              
-              {/* Game Actions */}
-              <div className="grid grid-cols-3 gap-3">
-                {gameContent.actions.map((action, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className={`border-${action.color} text-${action.color} hover:bg-${action.color} hover:text-white`}
-                    onClick={() => handleGameAction(action.action)}
-                  >
-                    {action.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            // Game Completed
-            <div className="text-center space-y-6">
-              <Trophy className="h-16 w-16 text-warning mx-auto animate-bounce" />
-              <h3 className="text-2xl font-bold">Great Job!</h3>
-              
-              {/* Stars Earned */}
-              <div className="flex justify-center space-x-2">
-                {[...Array(3)].map((_, i) => (
-                  <Star 
-                    key={i} 
-                    className={`h-8 w-8 ${i < starsEarned ? 'text-warning fill-current animate-pulse' : 'text-muted-foreground'}`} 
-                  />
-                ))}
-              </div>
-              
-              <div className="space-y-2">
-                <p className="text-lg">Final Score: <span className="font-bold text-primary">{score}</span></p>
-                <p className="text-sm text-muted-foreground">
-                  {starsEarned === 3 && "Perfect! You're a cognitive champion! 🏆"}
-                  {starsEarned === 2 && "Excellent work! Keep it up! ⭐"}
-                  {starsEarned === 1 && "Good job! Practice makes perfect! 💪"}
-                  {starsEarned === 0 && "Nice try! You'll do better next time! 🌟"}
-                </p>
-              </div>
-            </div>
+        <div className={`min-h-[400px] bg-${gameContent.color}/5 border-2 border-${gameContent.color}/20 rounded-lg p-6`}>
+          {gameId === "memory-match" && (
+            <MemoryMatchGame 
+              onGameComplete={(score, stars) => {
+                setScore(score);
+                setStarsEarned(stars);
+                setGameState("completed");
+                toast(`Memory Magic completed! Score: ${score} ⭐`);
+              }}
+              onExit={() => onOpenChange(false)}
+            />
+          )}
+          
+          {gameId === "focus-forest" && (
+            <FocusForestGame 
+              onGameComplete={(score, stars) => {
+                setScore(score);
+                setStarsEarned(stars);
+                setGameState("completed");
+                toast(`Focus Forest completed! Score: ${score} 🌳`);
+              }}
+              onExit={() => onOpenChange(false)}
+            />
+          )}
+          
+          {gameId === "puzzle-palace" && (
+            <PuzzlePalaceGame 
+              onGameComplete={(score, stars) => {
+                setScore(score);
+                setStarsEarned(stars);
+                setGameState("completed");
+                toast(`Puzzle Palace completed! Score: ${score} 🏰`);
+              }}
+              onExit={() => onOpenChange(false)}
+            />
+          )}
+          
+          {gameId === "speed-racer" && (
+            <SpeedRacerGame 
+              onGameComplete={(score, stars) => {
+                setScore(score);
+                setStarsEarned(stars);
+                setGameState("completed");
+                toast(`Speed Racer completed! Score: ${score} 🏎️`);
+              }}
+              onExit={() => onOpenChange(false)}
+            />
+          )}
+          
+          {gameId === "brain-boost" && (
+            <BrainBoostGame 
+              onGameComplete={(score, stars) => {
+                setScore(score);
+                setStarsEarned(stars);
+                setGameState("completed");
+                toast(`Brain Boost completed! Score: ${score} 🧠`);
+              }}
+              onExit={() => onOpenChange(false)}
+            />
+          )}
+          
+          {gameId === "creativity-castle" && (
+            <CreativityCastleGame 
+              onGameComplete={(score, stars) => {
+                setScore(score);
+                setStarsEarned(stars);
+                setGameState("completed");
+                toast(`Creativity Castle completed! Score: ${score} 🏰`);
+              }}
+              onExit={() => onOpenChange(false)}
+            />
           )}
         </div>
 

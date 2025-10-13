@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
+import { Login } from "./pages/Login";
+import { Signup } from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -17,9 +19,16 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Main route - handles landing and dashboard */}
             <Route path="/" element={<Index />} />
+            <Route path="/dashboard" element={<Index />} />
             <Route path="/dashboard/:role" element={<Index />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            
+            {/* Auth routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            
+            {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
