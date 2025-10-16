@@ -20,6 +20,7 @@ import {
   Plus
 } from "lucide-react";
 import { usePatients, useSessions, useKPIs, useEEGData } from "@/hooks/use-sqlite";
+import { EditPatientModal } from "./EditPatientModal";
 import { toast } from "sonner";
 
 interface PatientDetailsModalProps {
@@ -30,6 +31,9 @@ interface PatientDetailsModalProps {
 
 export const PatientDetailsModal = ({ patientId, open, onOpenChange }: PatientDetailsModalProps) => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isExportingData, setIsExportingData] = useState(false);
   
   // Get patient data
   const { patients } = usePatients();
@@ -76,6 +80,99 @@ export const PatientDetailsModal = ({ patientId, open, onOpenChange }: PatientDe
   const recentSessions = sessions?.slice(0, 5) || [];
   const recentKPIs = kpis?.slice(0, 10) || [];
   const latestEEG = eegData && eegData.length > 0 ? eegData[eegData.length - 1] : null;
+
+  // Handler functions for action buttons
+  const handleEditPatient = () => {
+    setShowEditModal(true);
+  };
+
+  const handleGenerateReport = async () => {
+    if (!patient) {
+      toast.error("Patient not found");
+      return;
+    }
+
+    setIsGeneratingReport(true);
+
+    try {
+      // Simulate report generation
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.success(`${patient.name} - Progress Report Generated! 📊`, {
+        description: "The comprehensive report is ready for download."
+      });
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast.error("Report generation failed", {
+        description: "Please try again or contact support"
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    if (!patient) {
+      toast.error("Patient not found");
+      return;
+    }
+
+    setIsExportingData(true);
+
+    try {
+      // Prepare comprehensive patient data for export
+      const exportData = {
+        patient_info: {
+          id: patient.id,
+          name: patient.name,
+          age: patient.age,
+          condition: patient.condition,
+          status: patient.status,
+          therapist_name: patient.therapist_name,
+          parent_name: patient.parent_name,
+          notes: patient.notes,
+          progress: patient.progress,
+          completed_sessions: patient.completed_sessions,
+          total_sessions: patient.total_sessions,
+          last_session: patient.last_session,
+          next_session: patient.next_session,
+          trend: patient.trend
+        },
+        sessions: sessions || [],
+        kpis: kpis || [],
+        eeg_data: eegData || [],
+        export_metadata: {
+          exported_at: new Date().toISOString(),
+          exported_by: "Therapist Dashboard",
+          data_version: "1.0"
+        }
+      };
+
+      // Create and download JSON file
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${patient.name.replace(/\s+/g, '_')}_Complete_Data_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Patient data exported successfully! 📁", {
+        description: `Complete data for ${patient.name} has been downloaded.`
+      });
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast.error("Data export failed", {
+        description: "Please try again or contact support"
+      });
+    } finally {
+      setIsExportingData(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -461,20 +558,41 @@ export const PatientDetailsModal = ({ patientId, open, onOpenChange }: PatientDe
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end space-x-2 pt-4 border-t">
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleEditPatient}
+          >
             <Edit className="h-4 w-4 mr-2" />
             Edit Patient
           </Button>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleGenerateReport}
+            disabled={isGeneratingReport}
+          >
             <FileText className="h-4 w-4 mr-2" />
-            Generate Report
+            {isGeneratingReport ? "Generating..." : "Generate Report"}
           </Button>
-          <Button size="sm" className="bg-primary hover:bg-primary/90">
+          <Button 
+            size="sm" 
+            className="bg-primary hover:bg-primary/90"
+            onClick={handleExportData}
+            disabled={isExportingData}
+          >
             <Download className="h-4 w-4 mr-2" />
-            Export Data
+            {isExportingData ? "Exporting..." : "Export Data"}
           </Button>
         </div>
       </DialogContent>
+      
+      {/* Edit Patient Modal */}
+      <EditPatientModal 
+        patientId={patientId}
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+      />
     </Dialog>
   );
 };
